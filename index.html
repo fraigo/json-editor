@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <script src="https://unpkg.com/vue"></script>
+</head>
+<body>
+  <div id="app">
+    <editor :object="content" :fields="fields" ></editor>
+  </div>
+
+  <script type="text/x-template" id="editor-template">
+    <div>
+        <div v-for="(field,id) in fields" :key="id">
+            <div is="datalabel" :name="id" :config="field" ></div>
+            <div class="field-value" >{{ object[id] }}</div>
+        </div>
+    </div>
+  </script>
+
+  <script type="text/x-template" id="datalabel-template">
+    <div class="field-label" ><b>{{ config.label ? config.label : name }}</b></div>
+  </script>
+
+
+  <script>
+
+    Vue.component('editor',{
+        props: ['object','fields'],
+        template: '#editor-template'
+    })
+
+    Vue.component('datalabel',{
+        props: ['name','config'],
+        template: '#datalabel-template'
+    })
+
+    var app = new Vue({
+      el: '#app',
+      data: {
+        content : {
+            id: 101,
+            name: "Test",
+            items: [
+                "test1",
+                "test2",
+                "test3"
+            ]
+        },
+        fields : {
+            id: {
+                type: "number",
+                label: "Id"
+            },
+            name: "string",
+            items: "array:string" 
+        }
+      }
+    })
+  </script>
+</body>
+</html>
