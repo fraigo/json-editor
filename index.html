@@ -6,9 +6,44 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
     <script src="https://unpkg.com/vue"></script>
+    <style>
+    body{
+      padding:0px;
+      margin:0px;
+      box-sizing: border-box;
+    }
+    #app {
+      margin:5px;
+      max-width: 640px;
+    }
+    body, td, input, textarea {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+    }
+    input, textarea, button, .html-edit {
+      padding:2px;
+      line-height:20px;
+      border: 1px solid #ccc;
+      border-radius: 3px 3px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button{
+      width: 100px;
+    }
+    .field-value{
+      display:flex;
+      margin-bottom: 3px;
+    }
+    </style>
 </head>
 <body>
   <div id="app">
+    <div>
+      <button onclick="saveData()">Save</button>
+      <button id="restore-button" onclick="restoreData()" disabled>Restore Last Save</button>
+      <button onclick="clearData()">Clear</button>
+    </div>
     <editor :object="content" :fields="fields" ></editor>
   </div>
 
@@ -16,13 +51,46 @@
     <div>
         <div v-for="(field,id) in fields" :key="id">
             <div is="datalabel" :name="id" :config="field" ></div>
-            <div class="field-value" >{{ object[id] }}</div>
+            <div :is="field.type+'_edit'" :object="object" :name="id" :config="field"  ></div>
         </div>
+        <pre>{{ object }}</pre>
     </div>
   </script>
 
   <script type="text/x-template" id="datalabel-template">
-    <div class="field-label" ><b>{{ config.label ? config.label : name }}</b></div>
+    <div class="field-label" ><b>{{ config.label ? config.label : name.substring(0,1).toUpperCase()+name.substring(1) }}</b> [{{ config.type }}]</div>
+  </script>
+
+  <script type="text/x-template" id="string_edit-template">
+    <div class="field-value" ><input type="text" v-model="object[name]"><slot></slot></div>
+  </script>
+
+  <script type="text/x-template" id="text_edit-template">
+    <div class="field-value" ><textarea cols="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
+  </script>
+
+  <script type="text/x-template" id="html_edit-template">
+    <div class="field-value" ><div class="html-edit" @blur="changed($event,object,name)" contenteditable v-html="object[name]"></div><slot></slot></div>
+  </script>
+
+  <script type="text/x-template" id="integer_edit-template">
+    <div class="field-value" ><input type="number" v-model="object[name]"  @change="changed($event,object,name)" ><slot></slot></div>
+  </script>
+
+  <script type="text/x-template" id="string_array_edit-template">
+    <div class="field-values" >
+      <div is="string_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}"  >
+          <button>Delete</button>
+      </div>
+    </div>
+  </script>
+
+  <script type="text/x-template" id="html_array_edit-template">
+    <div class="field-values" >
+      <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}"  >
+          <button>Delete</button>
+      </div>
+    </div>
   </script>
 
 
@@ -35,29 +103,131 @@
 
     Vue.component('datalabel',{
         props: ['name','config'],
-        template: '#datalabel-template'
+        template: '#datalabel-template',
+        methods:{
+          changed: function(ev,obj,idx){
+          }
+        }
     })
+
+    Vue.component('string_edit',{
+        props: ['object','name','config'],
+        template: '#string_edit-template',
+        methods:{
+          changed: function(ev,obj,idx){
+          }
+        }
+    })
+
+    Vue.component('text_edit',{
+        props: ['object','name','config'],
+        template: '#text_edit-template',
+        methods:{
+          changed: function(ev,obj,idx){
+          }
+        }
+    })
+
+    Vue.component('html_edit',{
+        props: ['object','name','config'],
+        template: '#html_edit-template',
+        methods:{
+          changed: function(ev,obj,idx){
+            console.log("Changed",ev.srcElement.innerHTML);
+            obj[idx] = ev.srcElement.innerHTML;
+          }
+        }
+    })
+
+    Vue.component('integer_edit',{
+        props: ['object','name','config'],
+        template: '#integer_edit-template',
+        methods:{
+          changed: function(ev,obj,idx){
+            if (obj[idx]==""){
+              obj[idx]=null;
+            }else{
+              obj[idx] = obj[idx]*1;
+            }
+          }
+        }
+    })
+
+    Vue.component('string_array_edit',{
+        props: ['object','name','config'],
+        template: '#string_array_edit-template'
+    })
+
+    Vue.component('html_array_edit',{
+        props: ['object','name','config'],
+        template: '#html_array_edit-template'
+    })
+
+    var localData = {
+      content : {
+          id: 101,
+          name: "Test",
+          items: [
+              "test1",
+              "test2",
+              "test3"
+          ],
+          content: "This is a long text",
+          formatted:"<b>Text</b>",
+      },
+      fields : {
+          id: {
+              type: "integer",
+              label: "Id"
+          },
+          name: {
+            type: "string"
+          },
+          content: {
+            type: "text"
+          },
+          items: {
+            type: "string_array",
+          },
+          formatted: {
+            type: "html",
+          } 
+      }
+    }
+
+    var lastSave = localData;
+
+    function saveData(){
+      if (localStorage.getItem('localdata')){
+        lastSave = JSON.parse(localStorage.getItem('localdata'));
+        document.getElementById('restore-button').disabled=false;
+      }
+      localStorage.setItem('localdata',JSON.stringify(localData));
+    }
+
+    function clearData(){
+      localStorage.removeItem('localdata');
+      document.location.reload();
+    }
+
+    function restoreData(){
+      localStorage.setItem('localdata',JSON.stringify(lastSave));
+      document.location.reload();
+    }
+
 
     var app = new Vue({
       el: '#app',
-      data: {
-        content : {
-            id: 101,
-            name: "Test",
-            items: [
-                "test1",
-                "test2",
-                "test3"
-            ]
-        },
-        fields : {
-            id: {
-                type: "number",
-                label: "Id"
-            },
-            name: "string",
-            items: "array:string" 
+      data: localData,
+      mounted: function(){
+        var tmpData = localStorage.getItem("localdata");
+        if (tmpData && tmpData!=""){
+          var data = JSON.parse(tmpData);
+          this.content = data.content;
+          this.fields = data.fields;
         }
+      },
+      methods: {
       }
     })
   </script>
