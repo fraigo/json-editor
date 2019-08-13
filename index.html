@@ -45,15 +45,15 @@
       <button onclick="clearData()">Clear</button>
     </div>
     <editor :object="content" :fields="fields" ></editor>
+    <pre >{{ content }}</pre>
   </div>
 
   <script type="text/x-template" id="editor-template">
     <div>
         <div v-for="(field,id) in fields" :key="id">
             <div is="datalabel" :name="id" :config="field" ></div>
-            <div :is="field.type+'_edit'" :object="object" :name="id" :config="field"  ></div>
+            <div :is="field.type+'_edit'" :object="object" :name="id" :config="field" @change="edited($event, object, id)" ></div>
         </div>
-        <pre>{{ object }}</pre>
     </div>
   </script>
 
@@ -79,16 +79,19 @@
 
   <script type="text/x-template" id="string_array_edit-template">
     <div class="field-values" >
-      <div is="string_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}"  >
-          <button>Delete</button>
+      <div is="string_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
+          <button @click="remove(object[name],index)">Delete</button>
+      </div>
+      <div is="string_edit" :object="newItem" :name="'value'" :config="{}"  >
+          <button @click="add(object[name])">Add</button>
       </div>
     </div>
   </script>
 
   <script type="text/x-template" id="html_array_edit-template">
     <div class="field-values" >
-      <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}"  >
-          <button>Delete</button>
+      <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)" >
+          <button @click="remove(object[name],index)">Delete</button>
       </div>
     </div>
   </script>
@@ -98,7 +101,12 @@
 
     Vue.component('editor',{
         props: ['object','fields'],
-        template: '#editor-template'
+        template: '#editor-template',
+        methods: {
+          edited: function(content, obj, idx){
+            obj[idx] = JSON.parse(JSON.stringify(obj[idx]));
+          }
+        }
     })
 
     Vue.component('datalabel',{
@@ -135,6 +143,7 @@
           changed: function(ev,obj,idx){
             console.log("Changed",ev.srcElement.innerHTML);
             obj[idx] = ev.srcElement.innerHTML;
+            this.$emit("contentchanged",this.object)
           }
         }
     })
@@ -155,12 +164,51 @@
 
     Vue.component('string_array_edit',{
         props: ['object','name','config'],
-        template: '#string_array_edit-template'
+        data: function() {
+          return {
+            newItem: {
+              value: ''
+            }
+          }
+        },
+        template: '#string_array_edit-template',
+        methods:{
+          remove:function(obj,item){
+            console.log("removing",item)
+            obj.splice(item,1)
+          },
+          add:function(obj){
+            obj.push(this.newItem.value)
+            this.newItem.value=''
+          },
+          changed:function(content,obj,item){
+            this.$emit("change",content)
+          }
+        }
     })
 
     Vue.component('html_array_edit',{
         props: ['object','name','config'],
-        template: '#html_array_edit-template'
+        data: function() {
+          return {
+            newItem: {
+              value: ''
+            },
+          }
+        },
+        template: '#html_array_edit-template',
+        methods:{
+          remove:function(obj,item){
+            obj.splice(item,1)
+          },
+          add:function(obj){
+            obj.push(this.newItem.value)
+            this.newItem.value=''
+          },
+          changed:function(content,obj,item){
+            this.$emit("change",content)
+          }
+        }
     })
 
     var localData = {
@@ -173,7 +221,11 @@
               "test3"
           ],
           content: "This is a long text",
-          formatted:"<b>Text</b>",
+          header:"<b>Text</b>",
+          list:[
+            "Test1 <sup>1</sup>",
+            "Test2 <sup>2</sup>",
+          ]
       },
       fields : {
           id: {
@@ -189,9 +241,12 @@
           items: {
             type: "string_array",
           },
-          formatted: {
+          header: {
             type: "html",
-          } 
+          },
+          list: {
+            type: "html_array",
+          },
       }
     }
 
