@@ -49,6 +49,12 @@
     .field-values > .field-value {
       margin-bottom: 5px;
     }
+    .header{
+      position:sticky;
+      top: -1px;
+      background-color: #fff;
+      box-shadow: 0px 5px 5px rgba(0,0,0,0.2);
+    }
     .toolbar{
       background-color: #eee;
       padding: 5px;
@@ -58,6 +64,7 @@
       border: 2px solid #eee;
       padding: 5px;
       box-shadow: 3px 3px 5px #eee;
+      margin: 10px 0px;
     }
     .item-index{
       display:inline-block;
@@ -68,6 +75,19 @@
       margin-right:5px;
       white-space: nowrap;
     }
+    .item-links{
+      height:30px;
+      text-align: center;
+    }
+    .item-links > span{
+      padding-right: 4px;
+    }
+    .item-link{
+      padding:8px;
+      background-color: #ddd;
+      text-decoration: none;
+      color: #000;
+    }
     .gray{
       color:#ccc;
     }
@@ -75,19 +95,27 @@
 </head>
 <body>
   <div id="app">
-    <div class="toolbar">
-      <button onclick="saveData()">Save</button>
-      <button id="restore-button" onclick="restoreData()" disabled>Restore Last Save</button>
-      <button onclick="clearData()">Clear</button>
-      <button @click="loadFile()">Load file</button>
+    <div class="header">
+      <div class="toolbar">
+        <button onclick="saveData()">Save</button>
+        <button id="restore-button" onclick="restoreData()" disabled>Restore Last Save</button>
+        <button onclick="clearData()">Clear</button>
+        <button @click="loadData()">Load Example</button>
+        <button @click="loadFile()">Load JSON</button>
+        <button onclick="exportData()">Export JSON</button>
+      </div>
+      <div class="item-links" v-if="content.length>1">
+        <span  v-for="(object,idx) in content" :key="idx"><a :href="'#item'+(idx+1)" onclick="setTimeout(window.scrollBy,50,0,-90)" class="item-link">{{(idx+1)}}</a></span>
+      </div>
     </div>
     <editor v-if="content.length" :content="content" :fields="fields" ></editor>
     <pre >{{ content }}</pre>
   </div>
 
   <script type="text/x-template" id="editor-template">
-    <div class="edit-item">
-      <div  v-for="(object,idx) in content" :key="idx">
+    <div >
+        <div  v-for="(object,idx) in content" :key="idx" class="edit-item">
+        <a :name="'item'+(idx+1)" :id="'item'+(idx+1)" ></a>
         <div v-for="(field,id) in fields" :key="id">
             <div is="datalabel" :name="id" :config="field" ></div>
             <div :is="field.type+'_edit'" :object="object" :name="id" :config="field" @change="edited($event, object, id)" ></div>
@@ -331,13 +359,14 @@
     }
 
     var localData = {
-      content : {
-      },
+      content : [{}],
       fields : {
       }
     }
 
     var lastSave = localData;
+
+    var isOriginalArray = true;
 
     function saveData(){
       if (localStorage.getItem('localdata')){
@@ -357,6 +386,21 @@
       document.location.reload();
     }
 
+    function exportData(){
+      var data = localData.content;
+      if (!isOriginalArray){
+        data = data[0];
+      }
+      var content = JSON.stringify(data,null," ");
+      var link=document.createElement("a");
+      link.setAttribute("download","export.json");
+      link.setAttribute("href","data:text/plain;base64,"+btoa(content));
+      link.style.display='none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(function(){ document.body.removeChild(link);},5000);
+    }
+
     function loadHttpData(target){
       var oReq = new XMLHttpRequest();
       oReq.addEventListener("load", function(){
@@ -370,6 +414,7 @@
     function loadData(data, target){
       if (typeof(data.length)!="number"){
         data = [data]
+        isOriginalArray = false;
       }
       var fields = getFields(data[0]);
       target.content = data;
@@ -391,6 +436,7 @@
               if (data){
                 loadData(data,target)
               }
+              document.body.removeChild(file);
             }
           }
           reader.readAsBinaryString(loadfile);
@@ -444,8 +490,6 @@
           var data = JSON.parse(tmpData);
           this.content = data.content;
           this.fields = data.fields;
-        }else{
-          loadHttpData(this);
         }
       },
       methods: {
