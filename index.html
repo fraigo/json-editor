@@ -40,6 +40,12 @@
     .btn-remove{
       color: #800;
     }
+    .field-input{
+      width:100%;
+    }
+    input::placeholder, textarea::placeholder{
+      color: #ccc;
+    }
     .field-label{
       margin-top: 5px;
       padding:5px 0px;
@@ -68,7 +74,7 @@
       box-shadow: 3px 3px 5px #eee;
       margin: 10px 0px;
     }
-    .item-index{
+    .item-index, .item-key{
       display:inline-block;
       height:22px;
       min-height:22px;
@@ -76,6 +82,11 @@
       text-align: center;
       margin-right:5px;
       white-space: nowrap;
+    }
+    .item-key{
+      min-width:100px;
+      text-align: left;
+      padding-right: 20px;
     }
     .item-links{
       height:30px;
@@ -90,8 +101,16 @@
       text-decoration: none;
       color: #000;
     }
+    .new-key{
+      min-width:100px;
+    }
     .gray{
       color:#ccc;
+    }
+    .html-edit:empty:before {
+      content: attr(placeholder);
+      display: block; /* For Firefox */
+      color: #ccc;
     }
     </style>
 </head>
@@ -127,59 +146,61 @@
   </script>
 
   <script type="text/x-template" id="datalabel-template">
-    <div class="field-label" ><b>{{ config.label ? config.label : name.substring(0,1).toUpperCase()+name.substring(1) }}</b> [{{ typeDesc(config.type) }}]</div>
+    <div class="field-label" >
+      <b>{{ config.label ? config.label : name.substring(0,1).toUpperCase()+name.substring(1) }}</b> [{{ typeDesc(config.type) }}]
+    </div>
   </script>
 
   <script type="text/x-template" id="string_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><input type="text" v-model="object[name]"><slot></slot></div>
+    <div class="field-value" >
+      <slot name="prefix"></slot>
+      <div class="field-input">
+        <input type="text" :class="typeof(object[name])=='object'?'gray':''" :readonly="typeof(object[name])=='object'" :placeholder="placeholder" v-model="object[name]">
+      </div>
+      <slot></slot>
+    </div>
   </script>
 
   <script type="text/x-template" id="text_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><textarea rows="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
+    <div class="field-value" >
+      <slot name="prefix"></slot>
+      <div class="field-input"><textarea rows="3" v-model="object[name]" @change="changed($event,object,name)" :placeholder="placeholder"></textarea></div>
+      <slot></slot>
+    </div>
+  </script>
+
+  <script type="text/x-template" id="object_edit-template">
+    <div class="field-value" >
+      <slot name="prefix"></slot>
+      <div class="field-input">{{object[name]}}</div>
+      <slot></slot>
+    </div>
   </script>
 
   <script type="text/x-template" id="html_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><div class="html-edit" @blur="changed($event,object,name)" contenteditable v-html="object[name]"></div><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><div class="html-edit" @blur="changed($event,object,name)" contenteditable :placeholder="placeholder" v-html="object[name]"></div><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="number_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><input type="number" v-model="object[name]"  @change="changed($event,object,name)" ><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><input type="number" v-model="object[name]"  :placeholder="placeholder" @change="changed($event,object,name)" ><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="data_array_edit-template">
     <div class="field-values" >
       <div :is="subtype + '_edit'" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
-          <div class="item-index" slot="prefix">{{index+1}}</div>
+          <div :class="isArray(object[name]) ? 'item-index' : 'item-key'" slot="prefix"><span>{{index+1}}</span></div>
       </div>
-      <div v-if="isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
+      <div v-if="isArray(object[name])" :is="subtype + '_edit'" :object="newItem" placeholder="New value" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
-          <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
+          <div :class="isArray(object[name]) ? 'item-index gray' : 'item-key gray'"  slot="prefix"><span>{{ object[name].length + 1 }}</span></div>
       </div>
-      <div v-if="!isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
-        <button class="btn-add" @click="add(object[name])">Add</button>
-        <div is="string_edit" slot="prefix" :object="newKey" :name="'value'"></div>
+      <div v-if="!isArray(object[name])" :is="subtype + '_edit'" :object="newItem" placeholder="New value"  :name="'value'" :config="{}"  >
+        <button class="btn-add" @click="addKey(object[name])">Add</button>
+        <div is="string_edit" class="new-key" placeholder="New key" slot="prefix" :object="newKey" :name="'value'"></div>
       </div>
     </div>
   </script>
-
-  <script type="text/x-template" id="html_array_edit-template">
-    <div class="field-values" >
-      <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)" >
-          <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
-          <div class="item-index" slot="prefix">{{index+1}}</div>
-      </div>
-      <div v-if="isArray(object[name])" is="html_edit" :object="newItem" :name="'value'" :config="{}"  >
-          <button class="btn-add" @click="add(object[name])">Add</button>
-          <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
-      </div>
-      <div v-if="!isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
-        <button class="btn-add" @click="add(object[name])">Add</button>
-        <div is="string_edit" slot="prefix" :object="newKey" :name="'value'"></div>
-      </div>
-    </div>
-  </script>
-
 
   <script>
 
@@ -209,7 +230,7 @@
     })
 
     var StringEdit = Vue.component('string_edit',{
-        props: ['object','name','config'],
+        props: ['object','name','config','placeholder'],
         template: '#string_edit-template',
         methods:{
           changed: function(ev,obj,idx){
@@ -218,16 +239,17 @@
     })
 
     var TextEdit = Vue.component('text_edit',{
+        extends: StringEdit,
+        template: '#text_edit-template'
+    })
+
+    var TextEdit = Vue.component('object_edit',{
         props: ['object','name','config'],
-        template: '#text_edit-template',
-        methods:{
-          changed: function(ev,obj,idx){
-          }
-        }
+        template: '#object_edit-template'
     })
 
     var HtmlEdit = Vue.component('html_edit',{
-        props: ['object','name','config'],
+        props: ['object','name','config','placeholder'],
         template: '#html_edit-template',
         methods:{
           changed: function(ev,obj,idx){
@@ -239,7 +261,7 @@
     })
 
     var NumberEdit = Vue.component('number_edit',{
-        props: ['object','name','config'],
+        extends: StringEdit,
         template: '#number_edit-template',
         methods:{
           changed: function(ev,obj,idx){
@@ -272,13 +294,16 @@
             obj.splice(item,1)
           },
           add:function(obj){
-            if (this.isArray(obj)){
-              obj.push(this.newItem.value)
-            }else{
-              obj[this.newKey.value]=this.newItem.value;
-            }
+            obj.push(this.newItem.value)
             this.newKey.value = ''
             this.newItem.value = ''
+          },
+          addKey:function(obj){
+            obj[this.newKey.value]=this.newItem.value;
+            obj = JSON.parse(JSON.stringify(obj));
+            this.newKey.value = ''
+            this.newItem.value = ''
+            this.$emit("change",obj)
           },
           changed:function(content,obj,item){
             this.$emit("change",content)
@@ -309,6 +334,18 @@
             value: ''
           },
           subtype: 'text'
+        }
+      },
+    })
+
+    var TextArrayEdit = Vue.component('object_array_edit',{
+      extends: StringArrayEdit,
+      data: function() {
+        return {
+          newItem: {
+            value: ''
+          },
+          subtype: 'object'
         }
       },
     })
