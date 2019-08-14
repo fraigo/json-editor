@@ -45,7 +45,9 @@
     }
     .field-value{
       display:flex;
-      margin-bottom: 3px;
+    }
+    .field-values > .field-value {
+      margin-bottom: 5px;
     }
     .toolbar{
       background-color: #eee;
@@ -59,17 +61,13 @@
     }
     .item-index{
       display:inline-block;
-      width:22px;
       height:22px;
-      min-width:22px;
       min-height:22px;
-      line-height: 20px;
+      line-height: 22px;
       text-align: center;
-      border:1px solid #ddd;
-      border-radius: 99% 99%;
       margin-right:5px;
+      white-space: nowrap;
     }
-
     .gray{
       color:#ccc;
     }
@@ -81,7 +79,7 @@
       <button onclick="saveData()">Save</button>
       <button id="restore-button" onclick="restoreData()" disabled>Restore Last Save</button>
       <button onclick="clearData()">Clear</button>
-      <button @click="loadData()">Load</button>
+      <button @click="loadFile()">Load file</button>
     </div>
     <editor v-if="content.length" :content="content" :fields="fields" ></editor>
     <pre >{{ content }}</pre>
@@ -124,9 +122,13 @@
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
           <div class="item-index" slot="prefix">{{index+1}}</div>
       </div>
-      <div :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
+      <div v-if="isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
           <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
+      </div>
+      <div v-if="!isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
+        <button class="btn-add" @click="add(object[name])">Add</button>
+        <div is="string_edit" slot="prefix" :object="newKey" :name="'value'"></div>
       </div>
     </div>
   </script>
@@ -137,9 +139,13 @@
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
           <div class="item-index" slot="prefix">{{index+1}}</div>
       </div>
-      <div is="html_edit" :object="newItem" :name="'value'" :config="{}"  >
+      <div v-if="isArray(object[name])" is="html_edit" :object="newItem" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
           <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
+      </div>
+      <div v-if="!isArray(object[name])" :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
+        <button class="btn-add" @click="add(object[name])">Add</button>
+        <div is="string_edit" slot="prefix" :object="newKey" :name="'value'"></div>
       </div>
     </div>
   </script>
@@ -223,6 +229,9 @@
             newItem: {
               value: ''
             },
+            newKey: {
+              value: ''
+            },
             subtype: 'string'
           }
         },
@@ -233,11 +242,19 @@
             obj.splice(item,1)
           },
           add:function(obj){
-            obj.push(this.newItem.value)
-            this.newItem.value=''
+            if (this.isArray(obj)){
+              obj.push(this.newItem.value)
+            }else{
+              obj[this.newKey.value]=this.newItem.value;
+            }
+            this.newKey.value = ''
+            this.newItem.value = ''
           },
           changed:function(content,obj,item){
             this.$emit("change",content)
+          },
+          isArray:function(obj){
+            return typeof(obj)=="object" && Array.isArray(obj)
           }
         }
     })
@@ -273,19 +290,31 @@
             newItem: {
               value: ''
             },
+            newKey: {
+              value: ''
+            },
+            subtype: 'html'
           }
         },
-        template: '#html_array_edit-template',
+        template: '#data_array_edit-template',
         methods:{
           remove:function(obj,item){
             obj.splice(item,1)
           },
           add:function(obj){
-            obj.push(this.newItem.value)
+            if (this.isArray(obj)){
+              obj.push(this.newItem.value)
+            }else{
+              obj[this.newKey.value]=this.newItem.value;
+            }
             this.newItem.value=''
+            this.newKey.value=''
           },
           changed:function(content,obj,item){
             this.$emit("change",content)
+          },
+          isArray:function(obj){
+            return typeof(obj)=="object" && Array.isArray(obj)
           }
         }
     })
@@ -328,16 +357,47 @@
       document.location.reload();
     }
 
-    function loadData(obj){
+    function loadHttpData(target){
       var oReq = new XMLHttpRequest();
       oReq.addEventListener("load", function(){
         var data = JSON.parse(this.responseText)
-        var fields = getFields(data[0]);
-        obj.content = data;
-        obj.fields = fields;
+        loadData(data,target)
       });
       oReq.open("GET", "data.json");
       oReq.send();
+    }
+
+    function loadData(data, target){
+      if (typeof(data.length)!="number"){
+        data = [data]
+      }
+      var fields = getFields(data[0]);
+      target.content = data;
+      target.fields = fields;
+    }
+
+    function loadFile(target){
+      var file=document.createElement("input");
+      file.setAttribute("type","file");
+      file.setAttribute("accept",".json");
+      file.style.display = 'none';
+      file.onchange=function(ev){
+        var loadfile = file.files[0];
+        if (loadFile){
+          var reader = new FileReader();
+          reader.onloadend = function(evt) {
+            if (evt.target.readyState == FileReader.DONE) {
+              var data=JSON.parse(evt.target.result.toString())
+              if (data){
+                loadData(data,target)
+              }
+            }
+          }
+          reader.readAsBinaryString(loadfile);
+        }
+      }
+      document.body.appendChild(file);
+      file.click()
     }
 
     function getType(content){
@@ -352,7 +412,7 @@
       if (fldtype=="string" && content.indexOf('<')>-1 && content.indexOf('>')>-1){
         type = "html"
       }
-      if (fldtype=="object" && typeof(content.length!="undefined")){
+      if (fldtype=="object"){
         type = "string_array"
         if (content.length){
           type = getType(content[0]) + "_array"
@@ -385,12 +445,15 @@
           this.content = data.content;
           this.fields = data.fields;
         }else{
-          loadData(this);
+          loadHttpData(this);
         }
       },
       methods: {
         loadData:function(){
-          loadData(this);
+          loadHttpData(this);
+        },
+        loadFile:function(){
+          loadFile(this);
         }
       }
     })
