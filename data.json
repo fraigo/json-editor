@@ -16,5 +16,9 @@
     "list": [
      "Test1 <sup>1</sup>",
      "Test2 <sup>2</sup>"
+    ],
+    "comments":[
+        "1 - Text with\nnewlines",
+        "2 - Text with\nnewlines"
     ]
 }]

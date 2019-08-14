@@ -31,6 +31,7 @@
     }
     button{
       width: 100px;
+      background-color: #f8f8f8;
     }
     .btn-add{
       color: #080;
@@ -39,7 +40,8 @@
       color: #800;
     }
     .field-label{
-      margin-top: 10px;
+      margin-top: 5px;
+      padding:5px 0px;
     }
     .field-value{
       display:flex;
@@ -54,6 +56,22 @@
       border: 2px solid #eee;
       padding: 5px;
       box-shadow: 3px 3px 5px #eee;
+    }
+    .item-index{
+      display:inline-block;
+      width:22px;
+      height:22px;
+      min-width:22px;
+      min-height:22px;
+      line-height: 20px;
+      text-align: center;
+      border:1px solid #ddd;
+      border-radius: 99% 99%;
+      margin-right:5px;
+    }
+
+    .gray{
+      color:#ccc;
     }
     </style>
 </head>
@@ -81,32 +99,34 @@
   </script>
 
   <script type="text/x-template" id="datalabel-template">
-    <div class="field-label" ><b>{{ config.label ? config.label : name.substring(0,1).toUpperCase()+name.substring(1) }}</b> [{{ config.type }}]</div>
+    <div class="field-label" ><b>{{ config.label ? config.label : name.substring(0,1).toUpperCase()+name.substring(1) }}</b> [{{ typeDesc(config.type) }}]</div>
   </script>
 
   <script type="text/x-template" id="string_edit-template">
-    <div class="field-value" ><input type="text" v-model="object[name]"><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><input type="text" v-model="object[name]"><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="text_edit-template">
-    <div class="field-value" ><textarea cols="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><textarea cols="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="html_edit-template">
-    <div class="field-value" ><div class="html-edit" @blur="changed($event,object,name)" contenteditable v-html="object[name]"></div><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><div class="html-edit" @blur="changed($event,object,name)" contenteditable v-html="object[name]"></div><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="number_edit-template">
-    <div class="field-value" ><input type="number" v-model="object[name]"  @change="changed($event,object,name)" ><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><input type="number" v-model="object[name]"  @change="changed($event,object,name)" ><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="data_array_edit-template">
     <div class="field-values" >
       <div :is="subtype + '_edit'" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
+          <div class="item-index" slot="prefix">{{index+1}}</div>
       </div>
       <div :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
+          <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
       </div>
     </div>
   </script>
@@ -115,9 +135,11 @@
     <div class="field-values" >
       <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)" >
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
+          <div class="item-index" slot="prefix">{{index+1}}</div>
       </div>
       <div is="html_edit" :object="newItem" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
+          <div class="item-index gray" slot="prefix">{{ object[name].length + 1 }}</div>
       </div>
     </div>
   </script>
@@ -125,7 +147,7 @@
 
   <script>
 
-    Vue.component('editor',{
+    var Editor = Vue.component('editor',{
         props: ['content','fields'],
         template: '#editor-template',
         mounted:function(){
@@ -138,16 +160,19 @@
         }
     })
 
-    Vue.component('datalabel',{
+    var DataLabel = Vue.component('datalabel',{
         props: ['name','config'],
         template: '#datalabel-template',
         methods:{
           changed: function(ev,obj,idx){
+          },
+          typeDesc : function(type){
+            return fieldTypes[type]
           }
         }
     })
 
-    Vue.component('string_edit',{
+    var StringEdit = Vue.component('string_edit',{
         props: ['object','name','config'],
         template: '#string_edit-template',
         methods:{
@@ -156,7 +181,7 @@
         }
     })
 
-    Vue.component('text_edit',{
+    var TextEdit = Vue.component('text_edit',{
         props: ['object','name','config'],
         template: '#text_edit-template',
         methods:{
@@ -165,7 +190,7 @@
         }
     })
 
-    Vue.component('html_edit',{
+    var HtmlEdit = Vue.component('html_edit',{
         props: ['object','name','config'],
         template: '#html_edit-template',
         methods:{
@@ -177,7 +202,7 @@
         }
     })
 
-    Vue.component('number_edit',{
+    var NumberEdit = Vue.component('number_edit',{
         props: ['object','name','config'],
         template: '#number_edit-template',
         methods:{
@@ -191,7 +216,7 @@
         }
     })
 
-    var StringArray = Vue.component('string_array_edit',{
+    var StringArrayEdit = Vue.component('string_array_edit',{
         props: ['object','name','config'],
         data: function() {
           return {
@@ -217,8 +242,8 @@
         }
     })
 
-    Vue.component('number_array_edit',{
-      extends: StringArray,
+    var NumberArrayEdit = Vue.component('number_array_edit',{
+      extends: StringArrayEdit,
       data: function() {
         return {
           newItem: {
@@ -229,8 +254,8 @@
       },
     })
 
-    Vue.component('text_array_edit',{
-      extends: StringArray,
+    var TextArrayEdit = Vue.component('text_array_edit',{
+      extends: StringArrayEdit,
       data: function() {
         return {
           newItem: {
@@ -241,7 +266,7 @@
       },
     })
 
-    Vue.component('html_array_edit',{
+    var HtmlArrayEdit = Vue.component('html_array_edit',{
         props: ['object','name','config'],
         data: function() {
           return {
@@ -265,13 +290,6 @@
         }
     })
 
-    var localData = {
-      content : {
-      },
-      fields : {
-      }
-    }
-
     var fieldTypes = {
       "string" : "Small text",
       "text" : "Text",
@@ -281,6 +299,13 @@
       "text_array" : "Text list",
       "html_array" : "HTML list",
       "number_array" : "Number list",
+    }
+
+    var localData = {
+      content : {
+      },
+      fields : {
+      }
     }
 
     var lastSave = localData;
