@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Document</title>
+    <title>JSON Editor</title>
+    <meta name="description" content="Online JSON Editor - Load, edit and save JSON structured data">
     <script src="vue.js"></script>
     <script src="https://unpkg.com/vue"></script>
     <style>
@@ -15,7 +16,7 @@
     }
     #app {
       margin:5px;
-      max-width: 640px;
+      max-width: 1024px;
     }
     body, td, input, textarea {
       font-family: Arial, Helvetica, sans-serif;
@@ -59,6 +60,7 @@
       background-color: #eee;
       padding: 5px;
       margin-bottom:10px;
+      text-align: center;
     }
     .edit-item{
       border: 2px solid #eee;
@@ -109,7 +111,7 @@
       </div>
     </div>
     <editor v-if="content.length" :content="content" :fields="fields" ></editor>
-    <pre >{{ content }}</pre>
+    <pre v-if='content.length'>{{ content }}</pre>
   </div>
 
   <script type="text/x-template" id="editor-template">
@@ -133,7 +135,7 @@
   </script>
 
   <script type="text/x-template" id="text_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><textarea cols="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
+    <div class="field-value" ><slot name="prefix"></slot><textarea rows="3" v-model="object[name]" @change="changed($event,object,name)" ></textarea><slot></slot></div>
   </script>
 
   <script type="text/x-template" id="html_edit-template">
@@ -359,7 +361,7 @@
     }
 
     var localData = {
-      content : [{}],
+      content : [],
       fields : {
       }
     }
