@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Document</title>
+    <script src="vue.js"></script>
     <script src="https://unpkg.com/vue"></script>
     <style>
     body{
@@ -31,29 +32,51 @@
     button{
       width: 100px;
     }
+    .btn-add{
+      color: #080;
+    }
+    .btn-remove{
+      color: #800;
+    }
+    .field-label{
+      margin-top: 10px;
+    }
     .field-value{
       display:flex;
       margin-bottom: 3px;
+    }
+    .toolbar{
+      background-color: #eee;
+      padding: 5px;
+      margin-bottom:10px;
+    }
+    .edit-item{
+      border: 2px solid #eee;
+      padding: 5px;
+      box-shadow: 3px 3px 5px #eee;
     }
     </style>
 </head>
 <body>
   <div id="app">
-    <div>
+    <div class="toolbar">
       <button onclick="saveData()">Save</button>
       <button id="restore-button" onclick="restoreData()" disabled>Restore Last Save</button>
       <button onclick="clearData()">Clear</button>
+      <button @click="loadData()">Load</button>
     </div>
-    <editor :object="content" :fields="fields" ></editor>
+    <editor v-if="content.length" :content="content" :fields="fields" ></editor>
     <pre >{{ content }}</pre>
   </div>
 
   <script type="text/x-template" id="editor-template">
-    <div>
+    <div class="edit-item">
+      <div  v-for="(object,idx) in content" :key="idx">
         <div v-for="(field,id) in fields" :key="id">
             <div is="datalabel" :name="id" :config="field" ></div>
             <div :is="field.type+'_edit'" :object="object" :name="id" :config="field" @change="edited($event, object, id)" ></div>
         </div>
+      </div>
     </div>
   </script>
 
@@ -73,17 +96,17 @@
     <div class="field-value" ><div class="html-edit" @blur="changed($event,object,name)" contenteditable v-html="object[name]"></div><slot></slot></div>
   </script>
 
-  <script type="text/x-template" id="integer_edit-template">
+  <script type="text/x-template" id="number_edit-template">
     <div class="field-value" ><input type="number" v-model="object[name]"  @change="changed($event,object,name)" ><slot></slot></div>
   </script>
 
-  <script type="text/x-template" id="string_array_edit-template">
+  <script type="text/x-template" id="data_array_edit-template">
     <div class="field-values" >
-      <div is="string_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
-          <button @click="remove(object[name],index)">Delete</button>
+      <div :is="subtype + '_edit'" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
+          <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
       </div>
-      <div is="string_edit" :object="newItem" :name="'value'" :config="{}"  >
-          <button @click="add(object[name])">Add</button>
+      <div :is="subtype + '_edit'" :object="newItem" :name="'value'" :config="{}"  >
+          <button class="btn-add" @click="add(object[name])">Add</button>
       </div>
     </div>
   </script>
@@ -91,7 +114,10 @@
   <script type="text/x-template" id="html_array_edit-template">
     <div class="field-values" >
       <div is="html_edit" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)" >
-          <button @click="remove(object[name],index)">Delete</button>
+          <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
+      </div>
+      <div is="html_edit" :object="newItem" :name="'value'" :config="{}"  >
+          <button class="btn-add" @click="add(object[name])">Add</button>
       </div>
     </div>
   </script>
@@ -100,8 +126,11 @@
   <script>
 
     Vue.component('editor',{
-        props: ['object','fields'],
+        props: ['content','fields'],
         template: '#editor-template',
+        mounted:function(){
+          console.log("content",this.content);
+        },
         methods: {
           edited: function(content, obj, idx){
             obj[idx] = JSON.parse(JSON.stringify(obj[idx]));
@@ -148,9 +177,9 @@
         }
     })
 
-    Vue.component('integer_edit',{
+    Vue.component('number_edit',{
         props: ['object','name','config'],
-        template: '#integer_edit-template',
+        template: '#number_edit-template',
         methods:{
           changed: function(ev,obj,idx){
             if (obj[idx]==""){
@@ -162,16 +191,17 @@
         }
     })
 
-    Vue.component('string_array_edit',{
+    var StringArray = Vue.component('string_array_edit',{
         props: ['object','name','config'],
         data: function() {
           return {
             newItem: {
               value: ''
-            }
+            },
+            subtype: 'string'
           }
         },
-        template: '#string_array_edit-template',
+        template: '#data_array_edit-template',
         methods:{
           remove:function(obj,item){
             console.log("removing",item)
@@ -185,6 +215,30 @@
             this.$emit("change",content)
           }
         }
+    })
+
+    Vue.component('number_array_edit',{
+      extends: StringArray,
+      data: function() {
+        return {
+          newItem: {
+            value: ''
+          },
+          subtype: 'number'
+        }
+      },
+    })
+
+    Vue.component('text_array_edit',{
+      extends: StringArray,
+      data: function() {
+        return {
+          newItem: {
+            value: ''
+          },
+          subtype: 'text'
+        }
+      },
     })
 
     Vue.component('html_array_edit',{
@@ -213,41 +267,20 @@
 
     var localData = {
       content : {
-          id: 101,
-          name: "Test",
-          items: [
-              "test1",
-              "test2",
-              "test3"
-          ],
-          content: "This is a long text",
-          header:"<b>Text</b>",
-          list:[
-            "Test1 <sup>1</sup>",
-            "Test2 <sup>2</sup>",
-          ]
       },
       fields : {
-          id: {
-              type: "integer",
-              label: "Id"
-          },
-          name: {
-            type: "string"
-          },
-          content: {
-            type: "text"
-          },
-          items: {
-            type: "string_array",
-          },
-          header: {
-            type: "html",
-          },
-          list: {
-            type: "html_array",
-          },
       }
+    }
+
+    var fieldTypes = {
+      "string" : "Small text",
+      "text" : "Text",
+      "number" : "Number",
+      "html" : "HTML formatted",
+      "string_array" : "String list",
+      "text_array" : "Text list",
+      "html_array" : "HTML list",
+      "number_array" : "Number list",
     }
 
     var lastSave = localData;
@@ -270,19 +303,70 @@
       document.location.reload();
     }
 
+    function loadData(obj){
+      var oReq = new XMLHttpRequest();
+      oReq.addEventListener("load", function(){
+        var data = JSON.parse(this.responseText)
+        var fields = getFields(data[0]);
+        obj.content = data;
+        obj.fields = fields;
+      });
+      oReq.open("GET", "data.json");
+      oReq.send();
+    }
+
+    function getType(content){
+      var fldtype = typeof(content);
+      var type = "string"
+      if (fldtype=="number"){
+        type = "number"
+      }
+      if (fldtype=="string" && (content.length>64 || content.indexOf('\n')>-1)){
+        type = "text"
+      }
+      if (fldtype=="string" && content.indexOf('<')>-1 && content.indexOf('>')>-1){
+        type = "html"
+      }
+      if (fldtype=="object" && typeof(content.length!="undefined")){
+        type = "string_array"
+        if (content.length){
+          type = getType(content[0]) + "_array"
+        }
+      }
+      return type
+    }
+
+    function getFields(data){
+      console.log(data);
+      var fields = {}
+      for (var field in data){
+        console.log(field);
+        var fld={}
+        fld.label = field.substring(0,1).toUpperCase() + field.substring(1);
+        fld.type = getType(data[field]);
+        fields[field]=fld
+      }
+      return fields
+    }
+
 
     var app = new Vue({
       el: '#app',
       data: localData,
-      mounted: function(){
+      created: function(){
         var tmpData = localStorage.getItem("localdata");
         if (tmpData && tmpData!=""){
           var data = JSON.parse(tmpData);
           this.content = data.content;
           this.fields = data.fields;
+        }else{
+          loadData(this);
         }
       },
       methods: {
+        loadData:function(){
+          loadData(this);
+        }
       }
     })
   </script>

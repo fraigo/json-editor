@@ -1,0 +1,20 @@
+[{
+    "id": 101,
+    "name": "Test",
+    "items": [
+     "test1",
+     "test2",
+     "test3"
+    ],
+    "numbers":[
+        23525,
+        2456,
+        67896
+    ],
+    "content": "This is a long text\nwith newlines",
+    "header": "<b>Text</b>",
+    "list": [
+     "Test1 <sup>1</sup>",
+     "Test2 <sup>2</sup>"
+    ]
+}]
