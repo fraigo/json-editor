@@ -112,6 +112,24 @@
       display: block; /* For Firefox */
       color: #ccc;
     }
+    .html-editor {
+      width: 100%;
+    }
+    .html-edit, .html-code{
+      min-height: 60px;
+    }
+    .html-toolbar button {
+      padding: 0px 8px;
+      height: 20px;
+      line-height: 20px;
+      border-radius: 3px 3px 0px 0px;
+      border-bottom: #ddd;
+      width: initial;
+      -webkit-user-select: none; /* Safari 3.1+ */
+      -moz-user-select: none; /* Firefox 2+ */
+      -ms-user-select: none; /* IE 10+ */
+      user-select: none; /* Standard syntax */
+    }
     </style>
 </head>
 <body>
@@ -178,7 +196,28 @@
   </script>
 
   <script type="text/x-template" id="html_edit-template">
-    <div class="field-value" ><slot name="prefix"></slot><div class="html-edit" @blur="changed($event,object,name)" contenteditable :placeholder="placeholder" v-html="object[name]"></div><slot></slot></div>
+    <div class="field-value" >
+      <slot name="prefix"></slot>
+      <div class="html-editor">
+        <div class="html-toolbar">
+          <span v-if="!visual" >
+            <button @click="visual=true">Visual</button>
+          </span>
+          <span v-if="visual" >
+            <button @click="visual=false">&lt;HTML&gt;</button>
+            <button @click="execCommand($event,'bold');"><span style="font-family: Times">B</span></button>
+            <button @click="execCommand($event,'italic');"><span style="font-family: Times; font-style:italic">I</span></button>
+            <button @click="execCommand($event,'heading',1);"><span style="font-size:1.0em">H1</span></button>
+            <button @click="execCommand($event,'heading',2);"><span style="font-size:0.9em">H2</span></button>
+            <button @click="execCommand($event,'heading',3);"><span style="font-size:0.8em">H3</span></button>
+            <button @click="execCommand($event,'heading',4);"><span style="font-size:0.7em">H4</span></button>
+          </span>
+        </div>
+        <div class="html-edit" v-if="visual" @blur="changed($event,object,name)" contenteditable :placeholder="placeholder" v-html="object[name]"></div>
+        <textarea class="html-code" v-if="!visual" :placeholder="placeholder" v-model="object[name]"></textarea>
+      </div>
+      <slot></slot>
+    </div>
   </script>
 
   <script type="text/x-template" id="number_edit-template">
@@ -251,11 +290,19 @@
     var HtmlEdit = Vue.component('html_edit',{
         props: ['object','name','config','placeholder'],
         template: '#html_edit-template',
+        data: function(){
+          return {
+            visual: true
+          }
+        },
         methods:{
           changed: function(ev,obj,idx){
             console.log("Changed",ev.srcElement.innerHTML);
             obj[idx] = ev.srcElement.innerHTML;
             this.$emit("contentchanged",this.object)
+          },
+          execCommand: function(ev, cmd, value){
+            document.execCommand(cmd, true, value)
           }
         }
     })
