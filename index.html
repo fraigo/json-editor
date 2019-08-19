@@ -130,6 +130,10 @@
       -ms-user-select: none; /* IE 10+ */
       user-select: none; /* Standard syntax */
     }
+    pre {
+      height: 60vh;
+      overflow: auto;
+    }
     </style>
 </head>
 <body>
@@ -147,8 +151,14 @@
         <span  v-for="(object,idx) in content" :key="idx"><a :href="'#item'+(idx+1)" onclick="setTimeout(window.scrollBy,50,0,-90)" class="item-link">{{(idx+1)}}</a></span>
       </div>
     </div>
-    <editor v-if="content.length" :content="content" :fields="fields" ></editor>
-    <pre v-if='content.length'>{{ content }}</pre>
+    <div >
+      <editor v-if="content.length" :content="content" :fields="fields" ></editor>
+      <pre v-if='content.length'>{{ content }}</pre>  
+    </div>
+    <div >
+      <editor v-if="fields" :content="[{fields:fields}]" :fields="fieldMeta" ></editor>
+      <pre v-if='fields'>{{ fields }}</pre>  
+    </div>    
   </div>
 
   <script type="text/x-template" id="editor-template">
@@ -190,7 +200,9 @@
   <script type="text/x-template" id="object_edit-template">
     <div class="field-value" >
       <slot name="prefix"></slot>
-      <div class="field-input">{{object[name]}}</div>
+      <div class="field-input">
+        <div is="editor" v-if="object[name]" :content="[object[name]]" :fields="fieldMeta" ></div>
+      </div>
       <slot></slot>
     </div>
   </script>
@@ -204,13 +216,15 @@
             <button @click="visual=true">Visual</button>
           </span>
           <span v-if="visual" >
+            <!-- https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand#Commands -->
             <button @click="visual=false">&lt;HTML&gt;</button>
             <button @click="execCommand($event,'bold');"><span style="font-family: Times">B</span></button>
             <button @click="execCommand($event,'italic');"><span style="font-family: Times; font-style:italic">I</span></button>
-            <button @click="execCommand($event,'heading',1);"><span style="font-size:1.0em">H1</span></button>
-            <button @click="execCommand($event,'heading',2);"><span style="font-size:0.9em">H2</span></button>
-            <button @click="execCommand($event,'heading',3);"><span style="font-size:0.8em">H3</span></button>
-            <button @click="execCommand($event,'heading',4);"><span style="font-size:0.7em">H4</span></button>
+            <button @click="execCommand($event,'heading',1);" title="Heading 1"><span style="font-size:1.0em">H1</span></button>
+            <button @click="execCommand($event,'heading',2);" title="Heading 2"><span style="font-size:0.9em">H2</span></button>
+            <button @click="execCommand($event,'heading',3);" title="Heading 3"><span style="font-size:0.8em">H3</span></button>
+            <button @click="execCommand($event,'heading',4);" title="Heading 4"><span style="font-size:0.7em">H4</span></button>
+            <button @click="execCommand($event,'removeFormat');" title="Remove all format"><span style="font-size:1.3em">⊗</span></button>
           </span>
         </div>
         <div class="html-edit" v-if="visual" @blur="changed($event,object,name)" contenteditable :placeholder="placeholder" v-html="object[name]"></div>
@@ -228,7 +242,7 @@
     <div class="field-values" >
       <div :is="subtype + '_edit'" :key="index" v-for="(value,index) in object[name]" :object="object[name]" :name="index" :config="{}" @contentchanged="changed($event,object[name],index)"  >
           <button class="btn-remove" @click="remove(object[name],index)">Delete</button>
-          <div :class="isArray(object[name]) ? 'item-index' : 'item-key'" slot="prefix"><span>{{index+1}}</span></div>
+          <div :class="isArray(object[name]) ? 'item-index' : 'item-key'" slot="prefix"><span v-if="isArray(object[name])" >{{index+1}}</span><span v-if="!isArray(object[name])" >{{index}}</span></div>
       </div>
       <div v-if="isArray(object[name])" :is="subtype + '_edit'" :object="newItem" placeholder="New value" :name="'value'" :config="{}"  >
           <button class="btn-add" @click="add(object[name])">Add</button>
@@ -284,7 +298,14 @@
 
     var TextEdit = Vue.component('object_edit',{
         props: ['object','name','config'],
-        template: '#object_edit-template'
+        template: '#object_edit-template',
+        computed: {
+          fieldMeta: function(){
+            var item = getFields(this.object[this.name])
+            //console.log("config",item)
+            return item
+          }
+        }
     })
 
     var HtmlEdit = Vue.component('html_edit',{
@@ -302,6 +323,7 @@
             this.$emit("contentchanged",this.object)
           },
           execCommand: function(ev, cmd, value){
+            console.log(ev)
             document.execCommand(cmd, true, value)
           }
         }
@@ -442,12 +464,22 @@
       "text_array" : "Text list",
       "html_array" : "HTML list",
       "number_array" : "Number list",
+      "object_array" : "Object list",
     }
 
     var localData = {
       content : [],
       fields : {
+      },
+      fieldMeta: {
+        fields : {
+          label: "Fields",
+          type: "object_array"
+        }
       }
+    }
+
+    var fieldMeta = {
     }
 
     var lastSave = localData;
@@ -556,6 +588,7 @@
     function getFields(data){
       console.log(data);
       var fields = {}
+      var fieldMeta = {}
       for (var field in data){
         console.log(field);
         var fld={}
