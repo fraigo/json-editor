@@ -30,6 +30,10 @@
       width: 100%;
       box-sizing: border-box;
     }
+    input[type="checkbox"]{
+      width: initial;
+      margin-right: 8px;
+    }
     button{
       width: 100px;
       background-color: #f8f8f8;
@@ -197,6 +201,14 @@
     </div>
   </script>
 
+  <script type="text/x-template" id="boolean_edit-template">
+    <div class="field-value" >
+      <slot name="prefix"></slot>
+      <div class="field-input"><input type="checkbox" v-model="object[name]">{{ object[name] ? 'true' : 'false' }}</div>
+      <slot></slot>
+    </div>
+  </script>
+
   <script type="text/x-template" id="object_edit-template">
     <div class="field-value" >
       <slot name="prefix"></slot>
@@ -343,6 +355,20 @@
         }
     })
 
+    var BooleanEdit = Vue.component('boolean_edit',{
+        extends: StringEdit,
+        template: '#boolean_edit-template',
+        methods:{
+          changed: function(ev,obj,idx){
+            if (obj[idx]==""){
+              obj[idx]=null;
+            }else{
+              obj[idx] = obj[idx]*1;
+            }
+          }
+        }
+    })
+
     var StringArrayEdit = Vue.component('string_array_edit',{
         props: ['object','name','config'],
         data: function() {
@@ -391,6 +417,18 @@
             value: ''
           },
           subtype: 'number'
+        }
+      },
+    })
+
+    var BooleanArrayEdit = Vue.component('boolean_array_edit',{
+      extends: StringArrayEdit,
+      data: function() {
+        return {
+          newItem: {
+            value: ''
+          },
+          subtype: 'boolean'
         }
       },
     })
@@ -459,6 +497,7 @@
       "string" : "Small text",
       "text" : "Text",
       "number" : "Number",
+      "boolean" : "Boolean",
       "html" : "HTML formatted",
       "string_array" : "String list",
       "text_array" : "Text list",
@@ -569,6 +608,9 @@
       var type = "string"
       if (fldtype=="number"){
         type = "number"
+      }
+      if (fldtype=="boolean"){
+        type = "boolean"
       }
       if (fldtype=="string" && (content.length>64 || content.indexOf('\n')>-1)){
         type = "text"

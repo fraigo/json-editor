@@ -13,6 +13,7 @@
     ],
     "content": "This is a long text\nwith newlines",
     "header": "<b>Text</b>",
+    "active": true,
     "list": [
      "Test1 <sup>1</sup>",
      "Test2 <sup>2</sup>"
