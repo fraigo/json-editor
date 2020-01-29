@@ -21,5 +21,15 @@
     "comments":[
         "1 - Text with\nnewlines",
         "2 - Text with\nnewlines"
+    ],
+    "objects":[
+        {
+            "name" : "Object1",
+            "id" : 123,
+            "checklist" : [
+                "Check1",
+                "Check2"
+            ]
+        }
     ]
 }]
